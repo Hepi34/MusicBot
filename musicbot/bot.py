@@ -15,6 +15,7 @@ import re
 import aiohttp
 import discord
 import colorlog
+from discord.ui import Button, View
 
 from io import BytesIO, StringIO
 from functools import wraps
@@ -952,7 +953,7 @@ class MusicBot(discord.Client):
 
     #######################################################################################################################
 
-    async def safe_send_message(self, dest, content, **kwargs):
+    async def safe_send_message(self, dest, content, player, channel, author, message, permissions, voice_channel, **kwargs):
         tts = kwargs.pop("tts", False)
         quiet = kwargs.pop("quiet", False)
         expire_in = kwargs.pop("expire_in", 0)
@@ -965,7 +966,29 @@ class MusicBot(discord.Client):
         try:
             if content is not None or allow_none:
                 if isinstance(content, discord.Embed):
-                    msg = await dest.send(embed=content)
+                    #msg = await dest.send(embed=content)
+                    print(content.description)
+                    if content.description.startswith("Connected to"):
+                        button = Button(label="Test", style=discord.ButtonStyle.gray)
+                        async def button_callback(interaction):
+                            await interaction.response.defer()
+                            print("interact")
+                    elif content.description.startswith("Enqueued"):
+                        button = Button(label="Delete", style=discord.ButtonStyle.gray)
+                        async def button_callback(interaction):
+                            await interaction.response.defer()
+                            print("Delete from queue")
+                            await self.cmd_skip(
+                                self, player, channel, author, message, permissions, voice_channel,
+                                param="f"
+                            )
+
+                    button.callback = button_callback
+                    view = View()
+                    view.add_item(button)
+
+                    msg = await dest.send(embed=content, view=view)
+                        
                 else:
                     msg = await dest.send(content, tts=tts)
 
@@ -1358,7 +1381,7 @@ class MusicBot(discord.Client):
         e.set_author(
             name=self.user.name,
             url="https://github.com/Just-Some-Bots/MusicBot",
-            icon_url=self.user.avatar_url,
+            icon_url=self.user.avatar.url,
         )
         return e
 
